@@ -4037,6 +4037,42 @@ Instructions for interacting with me using PR comments are available [here](http
 </details>`,
 		},
 		{
+			name:     "verified comment from trusted automation actor succeeds",
+			issues:   []jira.Issue{{ID: "1", Key: "OCPBUGS-123", Fields: &jira.IssueFields{Project: jira.Project{Key: "OCPBUGS"}, Unknowns: tcontainer.MarshalMap{helpers.SeverityField: severityCritical}}}},
+			body:     "/verified by Azure self-managed v2 e2e job",
+			login:    "redhat-chai-bot",
+			verified: []string{"Azure self-managed v2 e2e job"},
+			verificationInfo: []VerificationInfo{{
+				User:   "redhat-chai-bot",
+				Reason: "Azure self-managed v2 e2e job",
+				Type:   verifyMergeType,
+				Org:    "org",
+				Repo:   "repo",
+				PRNum:  1,
+				Branch: "branch",
+				Link:   "https://github.com/org/repo/pull/1",
+			}},
+			options:        JiraBranchOptions{},
+			labels:         []string{labels.JiraValidRef, labels.JiraValidBug, labels.SeverityCritical},
+			expectedLabels: []string{labels.JiraValidRef, labels.JiraValidBug, labels.SeverityCritical, labels.Verified},
+			expectedComment: `org/repo#1:@redhat-chai-bot: This PR has been marked as verified by ` + "`Azure self-managed v2 e2e job`" + `.
+
+<details>
+
+In response to [this](https://github.com/org/repo/pull/1):
+
+>/verified by Azure self-managed v2 e2e job
+
+
+Instructions for interacting with me using PR comments are available [here](https://prow.ci.openshift.org/command-help?repo=org%2Frepo).  If you have questions or suggestions related to my behavior, please file an issue against the [openshift-eng/jira-lifecycle-plugin](https://github.com/openshift-eng/jira-lifecycle-plugin/issues/new) repository.
+</details>`,
+			fullConfig: Config{PreMergeVerification: PreMergeVerificationOptions{TrustedActors: []TrustedVerificationActor{{
+				Login:          "redhat-chai-bot",
+				Repositories:   []string{"org/repo"},
+				AllowedActions: []string{verificationActionBy},
+			}}}},
+		},
+		{
 			name:   "valid bug on merged PR from payload repo with many verified external links does not migrate to VERIFIED and comments",
 			merged: true,
 			issues: []jira.Issue{{ID: "1", Key: "OCPBUGS-123", Fields: &jira.IssueFields{}}},

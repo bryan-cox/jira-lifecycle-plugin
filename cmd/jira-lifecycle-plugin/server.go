@@ -2564,10 +2564,14 @@ func handleVerification(e event, ghc githubClient, verificationOptions PreMergeV
 	if (len(e.verifyLater) > 0 || len(e.verify) > 0) && (e.verifiedRemove || e.verifiedBypass) {
 		return comment("The `/verified`, `/verified later`, `/verified remove`, and `/verified bypass` commands cannot be used in the same comment.")
 	}
-	if ok, err := ghc.IsCollaborator(e.org, e.repo, e.login); !ok {
-		return comment("Jira verification commands are restricted to collaborators for this repo.")
-	} else if err != nil {
-		return comment(fmt.Sprintf("Failed to determine wheter user %s is a collaborator for the %s/%s repo. Please try again.", e.login, e.org, e.repo))
+	if !verificationOptions.TrustedActorAllowed(e.org, e.repo, e.login, verificationAction(e)) {
+		ok, err := ghc.IsCollaborator(e.org, e.repo, e.login)
+		if err != nil {
+			return comment(fmt.Sprintf("Failed to determine wheter user %s is a collaborator for the %s/%s repo. Please try again.", e.login, e.org, e.repo))
+		}
+		if !ok {
+			return comment("Jira verification commands are restricted to collaborators for this repo.")
+		}
 	}
 	msg := ""
 	prLabels, err := ghc.GetIssueLabels(e.org, e.repo, e.number)
@@ -2676,6 +2680,21 @@ func handleVerification(e event, ghc githubClient, verificationOptions PreMergeV
 		return comment(msg)
 	}
 	return nil
+}
+
+func verificationAction(e event) string {
+	switch {
+	case len(e.verify) > 0:
+		return verificationActionBy
+	case len(e.verifyLater) > 0:
+		return verificationActionLater
+	case e.verifiedBypass:
+		return verificationActionBypass
+	case e.verifiedRemove:
+		return verificationActionRemove
+	default:
+		return ""
+	}
 }
 
 func isBugAllowed(issue *jira.Issue, allowedSecurityLevel []string) (bool, error) {

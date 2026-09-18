@@ -439,7 +439,25 @@ type PreMergeVerificationOptions struct {
 	// into the VERIFIED state, by the jira-lifecycle-plugin, if/when all associated PR links
 	// have been labeled as "verified".
 	ExcludedRepositories []string `json:"excluded_repositories,omitempty"`
+	// TrustedActors lists automation accounts that may run explicitly allowed verification
+	// commands without repository collaborator access.
+	TrustedActors []TrustedVerificationActor `json:"trusted_actors,omitempty"`
 }
+
+// TrustedVerificationActor identifies an automation account that may run verification
+// commands for a fixed set of repositories.
+type TrustedVerificationActor struct {
+	Login          string   `json:"login"`
+	Repositories   []string `json:"repositories"`
+	AllowedActions []string `json:"allowed_actions"`
+}
+
+const (
+	verificationActionBy     = "verified-by"
+	verificationActionLater  = "verified-later"
+	verificationActionBypass = "verified-bypass"
+	verificationActionRemove = "verified-remove"
+)
 
 func (b *Config) OptionsForPreMergeVerification() PreMergeVerificationOptions {
 	return b.PreMergeVerification
@@ -449,6 +467,18 @@ func (b *Config) OptionsForPreMergeVerification() PreMergeVerificationOptions {
 func (o *PreMergeVerificationOptions) Excluded(org, repo string) bool {
 	if slices.Contains(o.ExcludedRepositories, fmt.Sprintf("%s/%s", org, repo)) {
 		return true
+	}
+	return false
+}
+
+// TrustedActorAllowed reports whether an automation account is explicitly allowed to
+// run the requested verification action for the repository.
+func (o *PreMergeVerificationOptions) TrustedActorAllowed(org, repo, login, action string) bool {
+	repository := fmt.Sprintf("%s/%s", org, repo)
+	for _, actor := range o.TrustedActors {
+		if actor.Login == login && slices.Contains(actor.Repositories, repository) && slices.Contains(actor.AllowedActions, action) {
+			return true
+		}
 	}
 	return false
 }

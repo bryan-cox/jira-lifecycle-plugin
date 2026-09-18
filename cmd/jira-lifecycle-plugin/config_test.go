@@ -709,3 +709,62 @@ func TestPreMergeVerificationOptionsExcluded(t *testing.T) {
 		})
 	}
 }
+
+func TestPreMergeVerificationOptionsTrustedActorAllowed(t *testing.T) {
+	options := PreMergeVerificationOptions{
+		TrustedActors: []TrustedVerificationActor{{
+			Login:          "redhat-chai-bot",
+			Repositories:   []string{"openshift/hypershift"},
+			AllowedActions: []string{verificationActionBy},
+		}},
+	}
+
+	testCases := []struct {
+		name               string
+		org, repo, login   string
+		action             string
+		expectedAuthorized bool
+	}{
+		{
+			name:               "matching actor repository and action",
+			org:                "openshift",
+			repo:               "hypershift",
+			login:              "redhat-chai-bot",
+			action:             verificationActionBy,
+			expectedAuthorized: true,
+		},
+		{
+			name:               "different repository",
+			org:                "openshift",
+			repo:               "origin",
+			login:              "redhat-chai-bot",
+			action:             verificationActionBy,
+			expectedAuthorized: false,
+		},
+		{
+			name:               "different action",
+			org:                "openshift",
+			repo:               "hypershift",
+			login:              "redhat-chai-bot",
+			action:             verificationActionBypass,
+			expectedAuthorized: false,
+		},
+		{
+			name:               "different actor",
+			org:                "openshift",
+			repo:               "hypershift",
+			login:              "user",
+			action:             verificationActionBy,
+			expectedAuthorized: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := options.TrustedActorAllowed(tc.org, tc.repo, tc.login, tc.action)
+			if actual != tc.expectedAuthorized {
+				t.Errorf("expected authorization to be %t, got %t", tc.expectedAuthorized, actual)
+			}
+		})
+	}
+}
